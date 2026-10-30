@@ -1,4 +1,25 @@
 (() => {
+  // 流入元（utm_*）を公式フォーム・予約・代表プロフィールへ引き継ぐ。ボタン位置は utm_term に入れる
+  const utmKeys = ['utm_source','utm_medium','utm_campaign','utm_content'];
+  const landing = new URLSearchParams(location.search);
+  let utm = {};
+  utmKeys.forEach(k => { if (landing.get(k)) utm[k] = landing.get(k); });
+  try {
+    if (utm.utm_source) sessionStorage.setItem('comixUtm', JSON.stringify(utm));
+    else utm = JSON.parse(sessionStorage.getItem('comixUtm') || '{}');
+  } catch { /* 保存できない環境では着地時の値だけを使う */ }
+  if (!utm.utm_source) utm = {utm_source:'comix_ceo_ai_hp', utm_medium:'referral', utm_campaign:'ai_consult_202610'};
+  const isTracked = url => (url.hostname === 'www.comix.co.jp' && url.pathname.startsWith('/contact')) || url.hostname.endsWith('eeasy.jp') || (url.hostname === 'suzuki-commits.github.io' && url.pathname.startsWith('/suzuki-akihiro-profile'));
+  document.querySelectorAll('a[href^="http"]').forEach(a => {
+    let url;
+    try { url = new URL(a.href); } catch { return; }
+    if (!isTracked(url)) return;
+    const box = a.closest('section,header,footer');
+    const area = a.dataset.cta || box?.id || box?.className.split(' ')[0] || 'page';
+    utmKeys.forEach(k => { if (utm[k]) url.searchParams.set(k, utm[k]); });
+    url.searchParams.set('utm_term', 'hp_' + area);
+    a.href = url.toString();
+  });
   const image = document.querySelector('.hero-art img');
   image?.addEventListener('error', () => image.classList.add('missing'));
   const form = document.querySelector('#diagnosis-form');
